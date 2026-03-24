@@ -87,16 +87,19 @@ app.get('/', (req, res) => {
 
 app.post('/api/webhook', (req, res) => {
   const payload = req.body ?? {}
+  
+  console.log('收到请求:', JSON.stringify(payload))
 
   if (payload.type === 'url_verification') {
     return res.json({ challenge: payload.challenge })
   }
 
-  // 立即返回，异步处理
   res.json({ msg: 'ok' })
 
   const event = payload.event ?? {}
   const message = event.message ?? {}
+  console.log('event:', JSON.stringify(event))
+  console.log('message:', JSON.stringify(message))
   handleMessage(event, message).catch(e => console.error('handleMessage error:', e.message))
 })
 
