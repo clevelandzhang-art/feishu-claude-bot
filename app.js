@@ -25,7 +25,6 @@ const HISTORY_TTL = 60 * 60 * 24 * 7  // 7天
 function needsSearch(text) {
   const t = text.toLowerCase()
 
-  // 明确搜索指令：只要包含就触发
   const explicitCommands = [
     '帮我搜', '帮我查', '搜索', '查一下', '查下', '搜一下',
     '搜一搜', '帮我找', '找一下', '找下', '查询', '查资料',
@@ -34,7 +33,6 @@ function needsSearch(text) {
   ]
   if (explicitCommands.some(kw => t.includes(kw))) return true
 
-  // 时效性关键词：包含就触发
   const timeKeywords = [
     '最新', '今天', '现在', '最近', '新闻', '今年', '当前',
     '实时', '价格', '股价', '天气', '比赛', '结果', '发布',
@@ -156,23 +154,29 @@ async function handleMessage(event, message) {
       }
     }
 
-    // 3. 组装消息（系统提示 + 历史 + 当前问题）
+    // 3. 组装消息
     const messages = [
       { role: 'system', content: systemPrompt },
       ...history,
       { role: 'user', content: userText },
     ]
 
-    // 4. 调用 Claude
+    // 4. 调用 Claude，禁止 fallback 降级
     const response = await openai.chat.completions.create({
       model: MODEL,
       messages,
       max_tokens: 1024,
+    }, {
+      headers: {
+        'X-OR-No-Fallback': '1',
+      },
     })
-    const reply = response.choices[0].message.content
-    console.log(`[${openId}] Claude 回复完成`)
 
-    // 5. 保存对话历史（只存用户和助手消息，不存 system）
+    const reply = response.choices[0].message.content
+    const usedModel = response.model
+    console.log(`[${openId}] 回复完成，实际使用模型: ${usedModel}`)
+
+    // 5. 保存对话历史
     history.push({ role: 'user', content: userText })
     history.push({ role: 'assistant', content: reply })
     await saveHistory(openId, history)
